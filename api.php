@@ -29,15 +29,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['endpoint']) && $_GET['e
     // Garante que haja pelo menos um campo válido selecionado
     $fieldList = !empty($fields) ? implode(',', $fields) : '*';
 
+    // Retorna um array vazio se o CNPJ não for fornecido
+    if (empty($cnpj)) {
+        echo json_encode([]);
+        exit; // Encerrar a execução
+    }
+
     try {
-        $query = "SELECT $fieldList FROM view_produtos  WHERE (SELECT status FROM fornecedores WHERE cnpj = view_produtos.cnpj) = 'Ativado'";
-        if (!empty($cnpj)) {
-            $query .= " AND cnpj = :cnpj"; // Alterado de WHERE para AND
-        }
+        $query = "SELECT $fieldList FROM view_produtos WHERE (SELECT status FROM fornecedores WHERE cnpj = view_produtos.cnpj) = 'Ativado' AND cnpj = :cnpj"; 
         $stmt = $db->prepare($query);
-        if (!empty($cnpj)) {
-            $stmt->bindParam(':cnpj', $cnpj);
-        }
+        $stmt->bindParam(':cnpj', $cnpj);
         $stmt->execute();
         $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
         echo json_encode($produtos);
@@ -45,6 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['endpoint']) && $_GET['e
         echo json_encode(['erro' => 'Erro ao buscar produtos: ' . $e->getMessage()]);
     }
 }
+
 
 
 

@@ -3,6 +3,7 @@
 session_start();
 $tipo = $_SESSION['tipo'];
 $cnpj = $_SESSION['cnpj'];
+$usuario_id = $_SESSION['user_id'];
 
 require_once 'config.php';
 
@@ -19,19 +20,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bindParam(':id', $_POST['id'], PDO::PARAM_INT);
         $stmt->execute();
     } elseif (isset($_POST['ativar'])) {
-        $stmt = $db->prepare("UPDATE fornecedores SET status = 'Ativado' WHERE id = :id");
+        $stmt = $db->prepare("UPDATE fornecedores SET status = 'Ativado', data_ativacao = NOW(), data_inativacao = NULL, usuario_inativacao = NULL, usuario_ativacao = :usuario_id WHERE id = :id");
         $stmt->bindParam(':id', $_POST['id'], PDO::PARAM_INT);
+        $stmt->bindParam(':usuario_id', $usuario_id, PDO::PARAM_INT);
         $stmt->execute();
     } elseif (isset($_POST['inativar'])) {
-        $stmt = $db->prepare("UPDATE fornecedores SET status = 'Inativado' WHERE id = :id");
+        $stmt = $db->prepare("UPDATE fornecedores SET status = 'Inativado', data_ativacao = NULL, data_inativacao = NOW(), usuario_ativacao = NULL, usuario_inativacao = :usuario_id WHERE id = :id");
         $stmt->bindParam(':id', $_POST['id'], PDO::PARAM_INT);
+        $stmt->bindParam(':usuario_id', $usuario_id, PDO::PARAM_INT);
+        $stmt->execute();        
+    } elseif (isset($_POST['cadastrar'])) {
+        $stmt = $db->prepare("INSERT INTO fornecedores 
+        (razao_social, fantasia, cnpj, ie, cep, endereco, numero, bairro, cidade_uf, telefone, email, representante, representante_telefone, representante_email, status, usuario_id)
+        VALUES (:razao_social, :fantasia, :cnpj, :ie, :cep, :endereco, :numero, :bairro, :cidade_uf, :telefone, :email, :representante, :representante_telefone, :representante_email, :status, :usuario_id)");
+
+        $stmt->bindParam(':razao_social', $_POST['razao_social'], PDO::PARAM_STR);
+        $stmt->bindParam(':fantasia', $_POST['fantasia'], PDO::PARAM_STR);
+        $stmt->bindParam(':cnpj', $_POST['cnpj'], PDO::PARAM_STR);
+        $stmt->bindParam(':ie', $_POST['ie'], PDO::PARAM_STR);
+        $stmt->bindParam(':cep', $_POST['cep'], PDO::PARAM_STR);
+        $stmt->bindParam(':endereco', $_POST['endereco'], PDO::PARAM_STR);
+        $stmt->bindParam(':numero', $_POST['numero'], PDO::PARAM_STR);
+        $stmt->bindParam(':bairro', $_POST['bairro'], PDO::PARAM_STR);
+        $stmt->bindParam(':cidade_uf', $_POST['cidade_uf'], PDO::PARAM_STR);
+        $stmt->bindParam(':telefone', $_POST['telefone'], PDO::PARAM_STR);
+        $stmt->bindParam(':email', $_POST['email'], PDO::PARAM_STR);
+        $stmt->bindParam(':representante', $_POST['representante'], PDO::PARAM_STR);
+        $stmt->bindParam(':representante_telefone', $_POST['representante_telefone'], PDO::PARAM_STR);
+        $stmt->bindParam(':representante_email', $_POST['representante_email'], PDO::PARAM_STR);
+        $stmt->bindParam(':status', $_POST['status'], PDO::PARAM_STR);
+        $stmt->bindParam(':usuario_id', $usuario_id, PDO::PARAM_INT);
+
         $stmt->execute();
+
+        $logData = [
+            'razao_social' => $_POST['razao_social'],
+            'fantasia' => $_POST['fantasia'],
+            'cnpj' => $_POST['cnpj'],
+            'telefone' => $_POST['telefone'],
+            'email' => $_POST['email'],
+            'representante' => $_POST['representante'],
+            'usuario_id' => $usuario_id,
+            'timestamp' => date('Y-m-d H:i:s')
+        ];
+        $logFile = 'supplier_logs.txt';
+        file_put_contents($logFile, json_encode($logData) . PHP_EOL, FILE_APPEND);
+
+        echo '<script>console.log("Fornecedor adicionado com sucesso!");</script>';
     }
 }
 
-if (empty($tipo) && !empty($cnpj)) {
-    $stmt = $db->prepare("SELECT * FROM fornecedores WHERE cnpj = :cnpj");
-    $stmt->bindParam(':cnpj', $cnpj, PDO::PARAM_STR);
+if ($tipo === 'Fornecedor') {
+    $stmt = $db->prepare("SELECT * FROM fornecedores WHERE usuario_id = :usuario_id");
+    $stmt->bindParam(':usuario_id', $usuario_id, PDO::PARAM_INT);
     $stmt->execute();
     $fornecedores = $stmt->fetchAll();
 } else {
@@ -56,7 +97,9 @@ if (empty($tipo) && !empty($cnpj)) {
     $totalRows = $stmt->fetch()['total'];
     $totalPages = ceil($totalRows / $perPage);
 }
+
 ?>
+
 
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -73,6 +116,48 @@ if (empty($tipo) && !empty($cnpj)) {
 <body class="bg-dark text-light">
     <div class="container mt-5">
         <button class="btn btn-success btn-sm mb-4" id="btnAdicionar">Adicionar Fornecedor</button>
+
+        <div id="formCadastro" class="card mb-4 p-2" style="display:none;">
+            <h1 class="mb-4">Cadastrar Fornecedor</h1>
+            <form method="POST" action="crudFornecedores.php">
+                <div class="mb-3">
+                    <label for="razao_social" class="form-label">Razão Social</label>
+                    <input type="text" class="form-control d-none" name="cadastrar">
+                    <input type="text" class="form-control" name="razao_social" required>
+                </div>
+                <div class="mb-3">
+                    <label for="fantasia" class="form-label">Nome Fantasia</label>
+                    <input type="text" class="form-control" name="fantasia" required>
+                </div>
+                <div class="mb-3">
+                    <label for="cnpj" class="form-label">CNPJ</label>
+                    <input type="text" class="form-control" name="cnpj" required>
+                </div>
+                <div class="mb-3">
+                    <label for="telefone" class="form-label">Telefone</label>
+                    <input type="text" class="form-control" name="telefone" required>
+                </div>
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" class="form-control" name="email" required value="TESTE@teste.com">
+                </div>
+                <div class="mb-3">
+                    <label for="representante" class="form-label">Representante</label>
+                    <input type="text" class="form-control" name="representante" required>
+                </div>
+                <div class="mb-3">
+                    <label for="representante_telefone" class="form-label">Telefone Representante</label>
+                    <input type="text" class="form-control" name="representante_telefone" maxlength="15">
+                </div>
+                <div class="mb-3">
+                    <label for="representante_email" class="form-label">Email Representante</label>
+                    <input type="email" class="form-control" name="representante_email" maxlength="100">
+                </div>
+                <button type="submit" class="btn btn-primary">Cadastrar</button>
+                <button type="button" class="btn btn-secondary" id="btnCancelar">Cancelar</button>
+            </form>
+        </div>
+
         <div class="card mb-4 p-2">
             <h1 class="mb-4">Cadastro de Fornecedores</h1>
 
@@ -116,7 +201,14 @@ if (empty($tipo) && !empty($cnpj)) {
                                         <button type="submit" name="deletar" class="btn btn-danger btn-sm" onclick="return confirm('Tem certeza que deseja deletar?')">Deletar</button>
                                     </form>
 
-                                    <?php if ($f['status'] == 'Inativado'): ?>
+                                    <?php if ($f['status'] == 'Novo' || $f['status'] == ''): ?>
+                                        <?php if ($tipo == 'Validador'): ?>
+                                            <form method="POST" class="d-inline">
+                                                <input type="hidden" name="id" value="<?= $f['id'] ?>">
+                                                <button type="submit" name="ativar" class="btn btn-success btn-sm">Ativar</button>
+                                            </form>
+                                        <?php endif; ?>
+                                    <?php elseif ($f['status'] == 'Inativado' && $tipo == "Admin"): ?>
                                         <?php if ($tipo !== 'Fornecedor'): ?>
                                             <form method="POST" class="d-inline">
                                                 <input type="hidden" name="id" value="<?= $f['id'] ?>">
@@ -130,6 +222,7 @@ if (empty($tipo) && !empty($cnpj)) {
                                         </form>
                                     <?php endif; ?>
                                 </td>
+
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -137,24 +230,52 @@ if (empty($tipo) && !empty($cnpj)) {
             </div>
         </div>
     </div>
+
+    <script>
+        // document.getElementById('btnAdicionar').addEventListener('click', function() {
+        //     document.getElementById('formCadastro').style.display = 'block';
+        // });
+
+        // document.getElementById('btnCancelar').addEventListener('click', function() {
+        //     document.getElementById('formCadastro').style.display = 'none';
+        // });
+
+        function editar(fornecedor) {
+            document.getElementsByName('razao_social')[0].value = fornecedor.razao_social;
+            document.getElementsByName('fantasia')[0].value = fornecedor.fantasia;
+            document.getElementsByName('cnpj')[0].value = fornecedor.cnpj;
+            document.getElementsByName('telefone')[0].value = fornecedor.telefone;
+            document.getElementsByName('email')[0].value = fornecedor.email;
+            document.getElementsByName('representante')[0].value = fornecedor.representante;
+            document.getElementById('formCadastro').style.display = 'block';
+        }
+
+        let tipo = '<?= $tipo ?>';
+
+        console.log(tipo);
+
+        if (tipo === 'Validador') {
+            $('#btnAdicionar').hide();
+            $('button[name="deletar"]').hide();
+            $('button[name="inativar"]').hide();
+            $('button[name="editar"]').hide();
+        }
+
+        if (tipo === 'Fornecedor') {
+            $('button[name="deletar"]').hide();
+            $('button[name="ativar"]').hide();
+            $('button[name="inativar"]').hide();
+            $('button[name="editar"]').hide();
+        }
+
+        $('#btnAdicionar').on('click', function() {
+            $('#formCadastro').toggle();
+        });
+
+        $('#btnCancelar').on('click', function() {
+            $('#formCadastro').hide();
+        });
+    </script>
 </body>
 
 </html>
-<script>
-    let tipo = '<?= $tipo ?>';
-
-    if (tipo === 'Validador') {
-        $('#btnAdicionar').hide();
-        $('button[name="deletar"]').hide();
-        $('button[name="inativar"]').hide();
-        $('button[name="editar"]').hide();
-    }
-
-    if (tipo === 'Fornecedor') {
-        $('#btnAdicionar').hide();
-        $('button[name="deletar"]').hide();
-        $('button[name="ativar"]').hide();
-        $('button[name="inativar"]').hide();
-        $('button[name="editar"]').hide();
-    }
-</script>

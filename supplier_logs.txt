@@ -1,0 +1,7 @@
+{"razao_social":"TESTE","fantasia":"TESTE","cnpj":"TESTE","telefone":"TESTE","email":"TESTE@teste.com","representante":"","usuario_id":12,"timestamp":"2024-10-30 11:02:06"}
+{"razao_social":"TESTE","fantasia":"TESTE","cnpj":"TESTE","telefone":"TESTE","email":"TESTE@teste.com","representante":"","usuario_id":12,"timestamp":"2024-10-30 11:02:30"}
+{"razao_social":"TESTE","fantasia":"TESTE","cnpj":"TESTE","telefone":"TESTE","email":"TESTE@teste.com","representante":"","usuario_id":12,"timestamp":"2024-10-30 11:07:32"}
+{"razao_social":"18238797000122","fantasia":"18238797000122","cnpj":"18238797000122","telefone":"18238797000122","email":"TESTE@teste.com","representante":"18238797000122","usuario_id":12,"timestamp":"2024-10-30 13:04:32"}
+{"razao_social":"EXEMPLO DE FORNECEDOR","fantasia":"EXEMPLO DE FORNECEDOR","cnpj":"60796094000189","telefone":"92992287144","email":"TESTE@teste.com","representante":"AMERICO","usuario_id":1,"timestamp":"2024-10-30 15:06:49"}
+{"razao_social":"FAIVES","fantasia":"FAIVES","cnpj":"41954766000192","telefone":"9292287144","email":"TESTE@teste.com","representante":"ITALO","usuario_id":13,"timestamp":"2024-10-30 17:37:04"}
+{"razao_social":"WAGNER","fantasia":"WAGNER","cnpj":"01932181000157","telefone":"92999999","email":"TESTE@teste.com","representante":"WAGNER ","usuario_id":14,"timestamp":"2024-10-31 09:15:25"}

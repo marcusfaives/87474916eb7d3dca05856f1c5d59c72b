@@ -16,6 +16,22 @@ $tipo = $_SESSION['tipo'];
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <style>
+        ::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: #494846FF;
+            border-radius: 10px;
+            border: 2px solid #969695FF;
+        }
+
+        ::-webkit-scrollbar-track {
+            background-color: #2c2c2c;
+            border-radius: 10px;
+        }
+
         body {
             font-family: 'Poppins', sans-serif;
         }
@@ -38,8 +54,18 @@ $tipo = $_SESSION['tipo'];
     </style>
 </head>
 
+
+
+
+
+
 <body class="bg-dark">
     <div class="p-2 d-flex flex-wrap justify-content-center justify-content-sm-end w-100 gap-2 mt-4">
+        <button id="homeButton" class="btn btn-primary">Home</button>
+        <?php if ($tipo == "Fornecedor"): ?>
+            <a href="#" onclick="showForm()" id="link_produtos" class="btn btn-warning">Enviar Planilha</a>
+        <?php endif; ?>
+
         <a href="#" onclick="loadContent('crudProdutos.php')" id="link_produtos" class="btn btn-primary">Produtos Importados</a>
         <?php if ($tipo == 'Admin' || $tipo ==  'Validador'): ?>
             <a href="#" onclick="loadContent('validacao.php')" class="btn btn-warning">Validação de Produtos</a>
@@ -48,8 +74,17 @@ $tipo = $_SESSION['tipo'];
         <a class="btn btn-danger" onclick="logoff()">Logoff</a>
     </div>
     <div class="d-flex flex-wrap align-items-center justify-content-between p-1 bg-white shadow bg-dark">
-        <h1 class="text-left w-100 w-sm-auto"><img src="logo.jpg" alt="Logo" style="width: 100px;" class="w-3 mb-1 m-3">Bem-vindo(a)! <strong><?= $_SESSION['usuario']; ?></strong></h1>
+        <h1 class="text-left w-100 w-sm-auto"><img src="logo.jpg" alt="Logo" style="width: 100px;" class="w-3 mb-1 m-3">Bem-vindo(a)! <strong><?= $_SESSION['usuario'] . ' Logado como ' . $tipo; ?></strong></h1>
     </div>
+
+
+    <script>
+        document.getElementById('homeButton').addEventListener('click', function() {
+            location.reload();
+
+            console.log('voltou');
+        });
+    </script>
 
     <div class="form">
         <div class="container mt-3">
@@ -63,7 +98,7 @@ $tipo = $_SESSION['tipo'];
                 </div>
                 <div class="card-body">
                     <p class="text-center text-muted mb-4">
-                        Use o formato Excel (.xlsx) para importar dados de fornecedores e produtos. As abas devem seguir os formatos indicados: <strong>A primeira aba "Fornecedores" e a segunda "Produtos".</strong>
+                        Use o formato Excel (.xlsx) para importar dados de produtos. Só serão importados dados completos e dos CNPJs criados pelo seu usuário.</strong>
                     </p>
 
                     <div id="alertSuccess" class="d-none alert alert-success">Dados importados com sucesso!</div>
@@ -109,6 +144,11 @@ $tipo = $_SESSION['tipo'];
     </footer>
 
     <script>
+        function showForm() {
+            $('.form').show();
+            $('#conteudo').attr('src', '');
+        }
+
         function loadContent(url) {
             $('.form').hide();
             $('#conteudo').attr('src', url);
@@ -117,6 +157,7 @@ $tipo = $_SESSION['tipo'];
         let tipo = '<?= $tipo ?>';
 
         if (tipo != 'Validador') {
+
             $('.form').show();
         } else {
             $('.form').hide();
@@ -124,6 +165,10 @@ $tipo = $_SESSION['tipo'];
             loadContent('validacao.php');
         }
 
+        if (tipo = 'Fornecedor') {
+            $('.form').hide();
+            loadContent('crudFornecedores.php');
+        }
         let captchaAnswer;
 
         function generateCaptcha() {
@@ -180,33 +225,33 @@ $tipo = $_SESSION['tipo'];
 
             const formData = new FormData(this);
             axios.post('importar.php', formData, {
-                onUploadProgress: function(progressEvent) {
-                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                    progressBar.find('.progress-bar').css('width', percentCompleted + '%').text(percentCompleted + '%');
-                }
-            })
-            .then(function(response) {
-                if (response.data.success) {
-                    $('#alertSuccess').removeClass('d-none');                    
-                    $('#fileInput').val('');
-                    $('#captcha').val('');
-                    generateCaptcha();
-
-                    loadContent('crudProdutos.php');
-
-                } else {
-                    $('#alertError').removeClass('d-none');
+                    onUploadProgress: function(progressEvent) {
+                        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                        progressBar.find('.progress-bar').css('width', percentCompleted + '%').text(percentCompleted + '%');
+                    }
+                })
+                .then(function(response) {
+                    if (!response.data.error) {
+                        $('#alertSuccess').removeClass('d-none').text(response.data.message); // Exibir mensagem de sucesso
+                        $('#fileInput').val('');
+                        $('#captcha').val('');
+                        generateCaptcha();
+                    } else {
+                        $('#alertError').removeClass('d-none').text(response.data.message); // Exibir mensagem de erro
+                        $('#alertSuccess').addClass('d-none');
+                    }
+                    progressBar.hide();
+                })
+                .catch(function(error) {
+                    console.log('Erro ao importar: ', error);
+                    $('#alertError').removeClass('d-none').text('Ocorreu um erro durante a importação. Tente novamente.'); // Mensagem genérica de erro
                     $('#alertSuccess').addClass('d-none');
-                }
-                progressBar.hide();
-            })
-            .catch(function(error) {
-                $('#alertError').removeClass('d-none');
-                $('#alertSuccess').addClass('d-none');
-                progressBar.hide();
-                generateCaptcha();
-            });
+                    progressBar.hide();
+                    generateCaptcha();
+                });
         });
+
+
 
         function logoff() {
             if (confirm('Deseja realmente sair?')) {
@@ -224,4 +269,5 @@ $tipo = $_SESSION['tipo'];
     <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 
 </body>
+
 </html>
