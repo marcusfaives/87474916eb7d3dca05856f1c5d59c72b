@@ -12,6 +12,8 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
+$id_usuario = $_SESSION['user_id'];
+
 try {
     $db = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $user, $pass);
     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -29,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $codigo_barras_unidade = $_POST['codigo_barras_unidade'];
     $codigo_barras_master = $_POST['codigo_barras_master'];
     $cnpj = $_POST['cnpj'];
-    $id_usuario = $_SESSION['user_id'];
+   
 
     // Preço information
     $preco_unidade = $_POST['preco_unidade'] ?? null;
@@ -84,8 +86,11 @@ if (isset($_GET['delete'])) {
 // Pesquisa
 $search = $_GET['search'] ?? '';
 
-// Busca produtos e preço mais recente
-$stmt = $db->prepare("
+
+$id_usuario = $_SESSION['user_id'];
+
+// Monta a query
+$sql = "
     SELECT p.*, 
     pr.preco_unidade as preco_recente,
     pr.quantidade_master as quantidade_master_recente,
@@ -97,18 +102,29 @@ $stmt = $db->prepare("
                ROW_NUMBER() OVER (PARTITION BY produto_id ORDER BY data_registro DESC) as rn
         FROM precos
     ) pr ON p.id = pr.produto_id AND pr.rn = 1
+    LEFT JOIN fornecedores f ON f.cnpj = p.cnpj
     WHERE p.descricao_produto LIKE :search
-    " . ($tipo === 'Fornecedor' ? "AND p.cnpj = :cnpj" : "") . "
+    " . ($tipo === 'Fornecedor' ? "AND f.usuario_id = :user_id" : "") . "
     ORDER BY p.id
-");
+";
 
-// Adicionar bind para o CNPJ caso o tipo seja Fornecedor
+// Exibe a consulta com os parâmetros substituídos
+$queryExibicao = $sql;
+$queryExibicao = str_replace(':search', "'%" . $search . "%'", $queryExibicao);
+if ($tipo === 'Fornecedor') {
+    $queryExibicao = str_replace(':user_id', "'" . $id_usuario . "'", $queryExibicao);
+}
+//echo "<pre>$queryExibicao</pre>";
+
+// Executa a consulta
+$stmt = $db->prepare($sql);
 $stmt->bindValue(':search', '%' . $search . '%', PDO::PARAM_STR);
 if ($tipo === 'Fornecedor') {
-    $stmt->bindValue(':cnpj', $cnpj, PDO::PARAM_STR);
+    $stmt->bindValue(':user_id', $id_usuario, PDO::PARAM_STR);
 }
 $stmt->execute();
 $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 
 ?>
 

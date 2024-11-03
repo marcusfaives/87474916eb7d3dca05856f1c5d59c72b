@@ -3,13 +3,12 @@ session_start();
 require 'vendor/autoload.php';
 require_once 'config.php';
 
-$_SESSION['user_id'] = 1;
-
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 $conn = new mysqli($host, $user, $pass, $dbname);
 
-function limparCNPJ($cnpj) {
+function limparCNPJ($cnpj)
+{
     return preg_replace('/[^0-9]/', '', $cnpj);
 }
 
@@ -24,53 +23,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file']) && $_FILES['
     ini_set('memory_limit', '512M');
     ini_set('max_execution_time', '300');
 
-    $id_usuario = $_SESSION['user_id'];
+    $id_usuario = $_SESSION['user_id'] ?? 12;
+    if (!$id_usuario) {
+        http_response_code(400);
+        echo json_encode(['error' => true, 'message' => "Usuário não autenticado."]);
+        exit;
+    }
 
     try {
         $spreadsheet = IOFactory::load($file);
 
-        // Primeira aba: Fornecedores
-        $fornecedoresSheet = $spreadsheet->getSheet(0);
-        $fornecedoresData = $fornecedoresSheet->toArray(null, true, true, true);
-
-        foreach ($fornecedoresData as $index => $row) {
-            if ($index === 1) continue;
-
-            if (empty($row['C'])) continue;
-
-            $razao_social = $conn->real_escape_string($row['A']);
-            $fantasia = $conn->real_escape_string($row['B']);
-            $cnpj = limparCNPJ($conn->real_escape_string($row['C']));
-            $ie = $conn->real_escape_string($row['D']);
-            $cep = $conn->real_escape_string($row['E']);
-            $endereco = $conn->real_escape_string($row['F']);
-            $numero = $conn->real_escape_string($row['G']);
-            $bairro = $conn->real_escape_string($row['H']);
-            $cidade_uf = $conn->real_escape_string($row['I']);
-            $telefone = $conn->real_escape_string($row['J']);
-            $email = $conn->real_escape_string($row['K']);
-            $representante = $conn->real_escape_string($row['L']);
-            $representante_telefone = $conn->real_escape_string($row['M']);
-            $representante_email = $conn->real_escape_string($row['N']);
-
-            $sqlCheckFornecedor = "SELECT id FROM fornecedores WHERE cnpj = '$cnpj'";
-            $resultFornecedor = $conn->query($sqlCheckFornecedor);
-
-            if ($resultFornecedor->num_rows === 0) {
-                $sqlFornecedores = "INSERT INTO fornecedores (razao_social, fantasia, cnpj, ie, cep, endereco, numero, bairro, cidade_uf, telefone, email, representante, representante_telefone, representante_email, status)
-                VALUES ('$razao_social', '$fantasia', '$cnpj', '$ie', '$cep', '$endereco', '$numero', '$bairro', '$cidade_uf', '$telefone', '$email', '$representante', '$representante_telefone', '$representante_email', 'Inativado')
-                ON DUPLICATE KEY UPDATE razao_social='$razao_social', fantasia='$fantasia', ie='$ie', cep='$cep', endereco='$endereco', numero='$numero', bairro='$bairro', cidade_uf='$cidade_uf', telefone='$telefone', email='$email', representante='$representante', representante_telefone='$representante_telefone', representante_email='$representante_email'";
-
-                if ($conn->query($sqlFornecedores) === FALSE) {
-                    http_response_code(500);
-                    echo json_encode(['error' => true, 'message' => "Erro ao inserir fornecedores: " . $conn->error, 'sql' => $sqlFornecedores]);
-                    exit;
-                }
-            }
-        }
-
-        // Segunda aba: Produtos e Preços
-        $produtosSheet = $spreadsheet->getSheet(1);
+        $produtosSheet = $spreadsheet->getSheet(0);
         $produtosData = $produtosSheet->toArray(null, true, true, true);
 
         foreach ($produtosData as $index => $row) {
@@ -79,10 +42,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file']) && $_FILES['
             if (empty($row['E'])) continue;
 
             $codigo_barras_unidade = $conn->real_escape_string($row['E']);
-            $cnpj = limparCNPJ($conn->real_escape_string($row['F'])); // Ajuste conforme necessário
+            $cnpj = limparCNPJ($conn->real_escape_string($row['K'])); 
+
+            if (strlen($cnpj) !== 14 || !is_numeric($cnpj)) {
+                http_response_code(400);
+                echo json_encode(['error' => true, 'message' => "CNPJ inválido. Deve ter 14 caracteres numéricos. ".$cnpj]);
+                exit;
+            }
+
+            $sqlCheckFornecedor = "SELECT id FROM fornecedores WHERE cnpj = '$cnpj'";
+            $resultFornecedor = $conn->query($sqlCheckFornecedor);
+            if (!$resultFornecedor) {
+                http_response_code(500);
+                echo json_encode(['error' => true, 'message' => "Erro na consulta fornecedores: " . $conn->error]);
+                exit;
+            }
+
+            if ($resultFornecedor->num_rows === 0) {
+                http_response_code(400);
+                echo json_encode(['error' => true, 'message' => "CNPJ não encontrado na tabela fornecedores."]);
+                exit;
+            }
+
+            $sqlCheckFornecedor = "SELECT id FROM fornecedores WHERE usuario_id = '$id_usuario'";
+            $resultFornecedor = $conn->query($sqlCheckFornecedor);
+            if (!$resultFornecedor) {
+                http_response_code(500);
+                echo json_encode(['error' => true, 'message' => "Erro na consulta fornecedores: " . $conn->error]);
+                exit;
+            }
+
+            if ($resultFornecedor->num_rows === 0) {
+                http_response_code(400);
+                echo json_encode(['error' => true, 'message' => "CNPJ não encontrado na tabela fornecedores."]);
+                exit;
+            }
 
             $sqlCheckProduto = "SELECT id FROM produtos WHERE codigo_barras_unidade = '$codigo_barras_unidade' AND cnpj = '$cnpj'";
             $resultProduto = $conn->query($sqlCheckProduto);
+            if (!$resultProduto) {
+                http_response_code(500);
+                echo json_encode(['error' => true, 'message' => "Erro na consulta produtos: " . $conn->error]);
+                exit;
+            }
 
             if ($resultProduto->num_rows === 0) {
                 $descricao_produto = $conn->real_escape_string($row['A']);
@@ -107,7 +109,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file']) && $_FILES['
                 $produto_id = $produto['id'];
             }
 
-            // Inserção de preços
             $preco_unidade = $conn->real_escape_string($row['F']);
             $unidade_medida_master = $conn->real_escape_string($row['H']);
             $quantidade_master = $conn->real_escape_string($row['I']);

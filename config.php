@@ -1,13 +1,22 @@
 <?php
 
-# Configuração do banco de dados
-$host = 'redecusto.com.br';
-$dbname = 'redecusto_fornecedores';
-$user = 'redecusto';
-$pass = 'Vq2HEZ151';
+# banco de dados remoto
 
-// Banco de dados local
-/*/$host = 'localhost';
+$host = 'faives.com.br';
+$dbname = 'faives_custo';
+$user = 'faives_fives';
+$pass = 'ComiteRevolucionario';
+
+
+# banco de dados local
+
+/*$host = 'localhost';
 $dbname = 'faives_custo';
 $user = 'root';
 $pass = '';*/
+
+
+
+
+
+
