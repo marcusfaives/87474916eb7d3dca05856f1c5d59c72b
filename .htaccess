@@ -1,0 +1,12 @@
+# Ativar o módulo de reescrita
+RewriteEngine On
+
+# Reescrever URLs
+RewriteRule ^produtos$ crudProdutos.php [L]
+RewriteRule ^validacao$ validacao.php [L]
+RewriteRule ^fornecedores$ crudFornecedores.php [L]
+
+# Redirecionar para a página inicial se não houver correspondência
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [L]
